@@ -30,9 +30,17 @@ local correctValues = {[1] = "Main",[2] = "HealthBar.Color=",[3] = "Money.Color=
                 [55] = "Weapon.Icon.Y=",[56] = "Weapon.Ammo.Text.Y=",[57] = "WantedStars.X=",[58] = "WantedStars.Y-Fill=",[59] = "WantedStars.Y-Empty=",[60] = "CarName.X=",[61] = "CarName.Y=",[62] = "Radar.Main.X=",[63] = "Radar.RingPlane.X=",[64] = "Radar.Ring.Part1.X=",[65] = "Radar.Ring.Part2.X=",[66] = "Radar.Ring.Part3.X=",[67] = "Radar.Ring.Part4.X=",[68] = "Radar.Main.Y=",
                 [69] = "Radar.RingPlane.Y=",[70] = "Radar.Ring.Part1.Y=",[71] = "Radar.Ring.Part2.Y=",[72] = "Radar.Ring.Part3.Y=",[73] = "Radar.Ring.Part4.Y=",[74] = "Radar.ZPosBar.Bar.X=",[75] = "Radar.ZPosBar.BackTexture.X=",[76] = "Radar.ZPosBar.Bar.Y=",[77] = "Radar.ZPosBar.BackTexture.Y=",[78] = "Radar.ZPosBar.BackTexture.X-Scale=",[79] = "Radar.ZPosBar.BackTexture.Y-Scale=",[80] = "ZoneName.X=",[81] = "ZoneName.Y=",[82] = "[Other]",["83"] = "CheckExeVersion="}
                 moneyOriginal = 0
-----------------
+                local hudPointers = {}
 
-function blankIni()
+                local function allocatePointer(key, size)
+                    if hudPointers[key] then
+                        ffi.C.free(hudPointers[key])
+                    end
+                    hudPointers[key] = ffi.cast('float*', ffi.C.malloc(size))
+                    return hudPointers[key]
+                end
+
+                function blankIni()
 	editor = {
         -- Format for Element-Arrays: {<posX>,<posY>,<Height>,<Width>}
         -- Format for Colors: {r,g,b,a}
@@ -638,10 +646,10 @@ end
 function changeHud()
     local healthColor = join_argb(healthAlpha, healthBlue, healthGreen, healthRed)
     memory.write(0xBAB22C, healthColor, 4, true) -- Health string / enemy color / red marker / any red text (RGBA, 4 bytes)
-    local healthX = ffi.cast('float*', ffi.C.malloc(4))
-    local healthY = ffi.cast('float*', ffi.C.malloc(4))
-    local healthHeight = ffi.cast('float*', ffi.C.malloc(4))
-    local healthWidth = ffi.cast('float*', ffi.C.malloc(4))
+    local healthX = allocatePointer('healthX', 4)
+    local healthY = allocatePointer('healthY', 4)
+    local healthHeight = allocatePointer('healthHeight', 4)
+    local healthWidth = allocatePointer('healthWidth', 4)
     healthX[0] = editor.health[1]
     healthY[0] = editor.health[2]
     healthHeight[0] = editor.health[3]
@@ -652,10 +660,10 @@ function changeHud()
     ffi.cast('float**', 0x5892D8)[0] = healthWidth
     local oxygenColor = join_argb(oxygenAlpha, oxygenBlue, oxygenGreen, oxygenRed)
     memory.write(0xBAB238, oxygenColor, 4, true) -- White Color
-    local oxygenX = ffi.cast('float*', ffi.C.malloc(4))
-    local oxygenY = ffi.cast('float*', ffi.C.malloc(4))
-    local oxygenHeight = ffi.cast('float*', ffi.C.malloc(4))
-    local oxygenWidth = ffi.cast('float*', ffi.C.malloc(4))
+    local oxygenX = allocatePointer('oxygenX', 4)
+    local oxygenY = allocatePointer('oxygenY', 4)
+    local oxygenHeight = allocatePointer('oxygenHeight', 4)
+    local oxygenWidth = allocatePointer('oxygenWidth', 4)
     oxygenX[0] = editor.oxygen[1]
     oxygenY[0] = editor.oxygen[2]
     oxygenHeight[0] = editor.oxygen[3]
@@ -667,18 +675,18 @@ function changeHud()
     local dollarColor = join_argb(dollarAlpha, dollarBlue, dollarGreen, dollarRed)
     memory.write(0xbab230, dollarColor, 4, true) -- Money (car name color) = any green text
     memory.setint32(0x58F4D4, 609520896 + editor.moneyNegativeColor[1])
-    local moneyX = ffi.cast('float*', ffi.C.malloc(4))
-    local moneyY = ffi.cast('float*', ffi.C.malloc(4))
+    local moneyX = allocatePointer('moneyX', 4)
+    local moneyY = allocatePointer('moneyY', 4)
     moneyX[0] = editor.money[1]
     moneyY[0] = editor.money[2]
     ffi.cast('float**', 0x58F5FC)[0] = moneyX
     ffi.cast('float**', 0x58F5DC)[0] = moneyY 
     local moneyText = memory.hex2bin(translateTextToHex(editor.moneyFormat), 0x866C94, 6)
     local moneyNegativeText = memory.hex2bin(translateTextToHex(editor.moneyNegativeFormat), 0x866C8C, 6)
-    local armorX = ffi.cast('float*', ffi.C.malloc(4))
-    local armorY = ffi.cast('float*', ffi.C.malloc(4))
-    local armorHeight = ffi.cast('float*', ffi.C.malloc(4))
-    local armorWidth = ffi.cast('float*', ffi.C.malloc(4))
+    local armorX = allocatePointer('armorX', 4)
+    local armorY = allocatePointer('armorY', 4)
+    local armorHeight = allocatePointer('armorHeight', 4)
+    local armorWidth = allocatePointer('armorWidth', 4)
     local armorColor = join_argb(armorAlpha, armorBlue, armorGreen, armorRed)
     memory.write(0xBAB23C, armorColor, 4, true) -- Armor Color
     armorX[0] = editor.armor[1]
@@ -689,10 +697,10 @@ function changeHud()
     ffi.cast('float**', 0x58EF3A)[0] = armorY
     ffi.cast('float**', 0x589146)[0] = armorHeight
     ffi.cast('float**', 0x58915D)[0] = armorWidth
-    local weaponIconPosX = ffi.cast('float*', ffi.C.malloc(4))
-    local weaponIconPosY = ffi.cast('float*', ffi.C.malloc(4))
-    local weaponAmmoX = ffi.cast('float*', ffi.C.malloc(4))
-    local weaponAmmoY = ffi.cast('float*', ffi.C.malloc(4))
+    local weaponIconPosX = allocatePointer('weaponIconPosX', 4)
+    local weaponIconPosY = allocatePointer('weaponIconPosY', 4)
+    local weaponAmmoX = allocatePointer('weaponAmmoX', 4)
+    local weaponAmmoY = allocatePointer('weaponAmmoY', 4)
     weaponIconPosX[0] = editor.weaponIcon[1]
     weaponIconPosY[0] = editor.weaponIcon[2]
     editor.weaponAmmo[1],editor.weaponAmmo[2] = 10000.00, 10000.00
@@ -702,18 +710,18 @@ function changeHud()
     ffi.cast('float**', 0x58F913)[0] = weaponIconPosY -- Weapon Icon Y Pos
     ffi.cast('float**', 0x58F9F7)[0] = weaponAmmoX -- Weapon Ammo Y Pos
     ffi.cast('float**', 0x58F9DC)[0] = weaponAmmoY -- Weapon Ammo X Pos
-    local wantedStarsXX = ffi.cast('float*', ffi.C.malloc(4))
-    local wantedStarsYY = ffi.cast('float*', ffi.C.malloc(4))
-    wantedStarsXX[0] = editor.wanted[1]
-    wantedStarsYY[0] = editor.wanted[2]
-    ffi.cast('float**', 0x58DD0F)[0] = wantedStarsXX -- Wanted Stars X
-    ffi.cast('float**', 0x58DDFC)[0] = wantedStarsYY -- Wanted Stars Y
+    local wantedStarsX = allocatePointer('wantedStarsX', 4)
+    local wantedStarsY = allocatePointer('wantedStarsY', 4)
+    wantedStarsX[0] = editor.wanted[1]
+    wantedStarsY[0] = editor.wanted[2]
+    ffi.cast('float**', 0x58DD0F)[0] = wantedStarsX -- Wanted Stars X
+    ffi.cast('float**', 0x58DDFC)[0] = wantedStarsY -- Wanted Stars Y
     local wantedStarsColor = join_argb(wantedStarsAlpha, wantedStarsBlue, wantedStarsGreen, wantedStarsRed)
     memory.write(0xBAB244, wantedStarsColor, 4, true) -- Wanted level / yellow color (RGBA, 4 bytes)
-    local radarX = ffi.cast('float*', ffi.C.malloc(4))
-    local radarY = ffi.cast('float*', ffi.C.malloc(4))
-    local radarWidth = ffi.cast('float*', ffi.C.malloc(4))
-    local radarHeight = ffi.cast('float*', ffi.C.malloc(4))
+    local radarX = allocatePointer('radarX', 4)
+    local radarY = allocatePointer('radarY', 4)
+    local radarWidth = allocatePointer('radarWidth', 4)
+    local radarHeight = allocatePointer('radarHeight', 4)
     radarWidth[0] = editor.radar[4]
     radarHeight[0] = editor.radar[3]
     radarX[0] = editor.radar[1]
@@ -751,8 +759,8 @@ function changeHud()
     ffi.cast('float**', 0x58A99D)[0] = radarWidth 
     local clockText = memory.hex2bin(translateTextToHex(editor.clockFormat), 0x859A6C, 10)
     local clockColor = memory.setint32(0x58EBCA, 609520900+editor.clockColor[1], 1)
-    local clockX = ffi.cast('float*', ffi.C.malloc(4))
-    local clockY = ffi.cast('float*', ffi.C.malloc(4))
+    local clockX = allocatePointer('clockX', 4)
+    local clockY = allocatePointer('clockY', 4)
     clockX[0] = editor.clock[1]
     clockY[0] = editor.clock[2]
     ffi.cast('float**',0x58EC16)[0] = clockX
@@ -810,32 +818,12 @@ end
 
 function onExitScript()
     memory.setint32(0xB7CE50,editor.moneyCurrentValue)
-    ffi.C.free(healthX)
-    ffi.C.free(healthY)
-    ffi.C.free(healthHeight)
-    ffi.C.free(healthWidth)
-    ffi.C.free(oxygenX)
-    ffi.C.free(oxygenY)
-    ffi.C.free(oxygenHeight)
-    ffi.C.free(oxygenWidth)
-    ffi.C.free(moneyX)
-    ffi.C.free(moneyY)
-    ffi.C.free(armorX)
-    ffi.C.free(armorY)
-    ffi.C.free(armorHeight)
-    ffi.C.free(armorWidth)
-    ffi.C.free(weaponIconPosX)
-    ffi.C.free(weaponIconPosY)
-    ffi.C.free(weaponAmmoX)
-    ffi.C.free(weaponAmmoY)
-    ffi.C.free(wantedStarsX)
-    ffi.C.free(wantedStarsY)
-    ffi.C.free(radarX)
-    ffi.C.free(radarY)
-    ffi.C.free(radarHeight)
-    ffi.C.free(radarWidth)
-    ffi.C.free(clockX)
-    ffi.C.free(clockY)
+    for _, pointer in pairs(hudPointers) do
+        if pointer then
+            ffi.C.free(pointer)
+        end
+    end
+    hudPointers = {}
     memory.write(0x58DB60,editor.starsCurrentValue,1,0)
 end 
 
