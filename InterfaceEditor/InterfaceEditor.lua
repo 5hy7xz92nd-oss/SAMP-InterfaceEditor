@@ -77,24 +77,95 @@ end
 
 function loadIni()
 	local f = io.open(cfg, "r")
-	if f then
-		editor = decodeJson(f:read("*all"))
-		f:close()
+	if not f then
+		blankIni()
+		return
+	end
+
+	local contents = f:read("*all")
+	f:close()
+
+	if contents == "" then
+		blankIni()
+		return
+	end
+
+	local ok, decoded = pcall(decodeJson, contents)
+	if ok and type(decoded) == "table" then
+		editor = decoded
+	else
+		blankIni()
 	end
 end
 
 function saveIni()
-	if type(editor) == "table" then
-		local f = io.open(cfg, "w")
-		f:close()
-		if f then
-			local f = io.open(cfg, "r+")
-			f:write(encodeJson(editor)) 
-			f:close()
+	if type(editor) ~= "table" then
+		return
+	end
+
+	if not doesDirectoryExist(path) then
+		createDirectory(path)
+	end
+
+	if not cfg or cfg == "" then
+		return
+	end
+
+	local cfgPath = cfg
+	local tmpSuffix = ".tmp"
+	local backupSuffix = ".bak"
+	local tmpCfg = cfgPath .. tmpSuffix
+	local backupCfg = cfgPath .. backupSuffix
+	local backupCreated = false
+	local f = io.open(tmpCfg, "w")
+	if not f then
+		return
+	end
+
+	local ok = pcall(function()
+		f:write(encodeJson(editor))
+	end)
+
+	f:close()
+	if not ok then
+		os.remove(tmpCfg)
+		return
+	end
+
+	if doesFileExist(backupCfg) then
+		local removed = os.remove(backupCfg)
+		if not removed then
+			os.remove(tmpCfg)
+			return
 		end
 	end
+
+	if doesFileExist(cfg) then
+		local backupOk = os.rename(cfg, backupCfg)
+		if not backupOk then
+			os.remove(tmpCfg)
+			return
+		end
+		backupCreated = true
+	end
+
+	local renameOk = os.rename(tmpCfg, cfg)
+	if not renameOk then
+		print("InterfaceEditor: failed to save config file at " .. cfgPath .. ". Check that the path is writable.")
+		if backupCreated and doesFileExist(backupCfg) then
+			local restoreOk = os.rename(backupCfg, cfg)
+			if not restoreOk then
+				print("InterfaceEditor: failed to restore config backup from " .. backupCfg .. " after save failure. Manual recovery may be required.")
+				return
+			end
+		end
+		return
+	end
+
+	if doesFileExist(backupCfg) then
+		os.remove(backupCfg)
+	end
 end
-if not doesDirectoryExist(path) then createDirectory(path) end
 if doesFileExist(cfg) then loadIni() else blankIni() end
 
 local fsFont = nil
